@@ -2,9 +2,12 @@
 
 Doc : https://www.infoclimat.fr/public-api/
 
-L'API "opendata" renvoie les observations des stations à partir d'un token :
-    https://www.infoclimat.fr/opendata/?method=get&format=json
+L'API "opendata" (v2) renvoie les observations des stations à partir d'un token :
+    https://www.infoclimat.fr/opendata/?version=2&method=get&format=json
         &stations[]=<ID>&start=<YYYY-MM-DD>&end=<YYYY-MM-DD>&token=<TOKEN>
+
+Le token est lié à l'adresse IP déclarée lors de sa création côté Infoclimat ;
+les requêtes doivent donc partir de cette IP.
 
 Le token est lu dans la variable d'environnement INFOCLIMAT_TOKEN.
 
@@ -141,6 +144,7 @@ async def fetch_observations(
 
     today = date.today()
     params: list[tuple[str, str]] = [
+        ("version", "2"),
         ("method", "get"),
         ("format", "json"),
         ("start", (today - timedelta(days=1)).isoformat()),
