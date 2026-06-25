@@ -19,7 +19,9 @@ proprement : il renvoie available=False avec la raison, et la couche
 """
 from __future__ import annotations
 
+import json
 import math
+import os
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
@@ -28,47 +30,43 @@ import httpx
 
 OPENDATA_URL = "https://www.infoclimat.fr/opendata/"
 
-# Table intégrée des principales stations SYNOP françaises (IDs compatibles
-# Infoclimat). Sert à choisir la station la plus proche sans dépendre d'un
-# endpoint de listing. Surchargée par INFOCLIMAT_STATIONS si défini.
-STATIONS: list[dict[str, Any]] = [
-    {"id": "07015", "name": "Lille-Lesquin", "lat": 50.570, "lon": 3.097},
-    {"id": "07005", "name": "Abbeville", "lat": 50.136, "lon": 1.834},
-    {"id": "07037", "name": "Rouen-Boos", "lat": 49.383, "lon": 1.181},
-    {"id": "07110", "name": "Brest-Guipavas", "lat": 48.444, "lon": -4.412},
-    {"id": "07130", "name": "Rennes-Saint-Jacques", "lat": 48.069, "lon": -1.734},
-    {"id": "07139", "name": "Alençon", "lat": 48.445, "lon": 0.110},
-    {"id": "07149", "name": "Paris-Orly", "lat": 48.717, "lon": 2.384},
-    {"id": "07150", "name": "Paris-Roissy-CDG", "lat": 49.013, "lon": 2.550},
-    {"id": "07156", "name": "Paris-Montsouris", "lat": 48.821, "lon": 2.338},
-    {"id": "07168", "name": "Troyes-Barberey", "lat": 48.325, "lon": 4.020},
-    {"id": "07181", "name": "Nancy-Essey", "lat": 48.690, "lon": 6.221},
-    {"id": "07190", "name": "Strasbourg-Entzheim", "lat": 48.549, "lon": 7.640},
-    {"id": "07207", "name": "Pointe-de-Chemoulin", "lat": 47.234, "lon": -2.298},
-    {"id": "07222", "name": "Nantes-Bouguenais", "lat": 47.150, "lon": -1.609},
-    {"id": "07240", "name": "Tours-Parçay-Meslay", "lat": 47.444, "lon": 0.727},
-    {"id": "07255", "name": "Bourges", "lat": 47.059, "lon": 2.360},
-    {"id": "07280", "name": "Dijon-Longvic", "lat": 47.268, "lon": 5.088},
-    {"id": "07299", "name": "Bâle-Mulhouse", "lat": 47.614, "lon": 7.510},
-    {"id": "07335", "name": "Poitiers-Biard", "lat": 46.594, "lon": 0.314},
-    {"id": "07434", "name": "Limoges-Bellegarde", "lat": 45.861, "lon": 1.175},
-    {"id": "07460", "name": "Clermont-Ferrand", "lat": 45.787, "lon": 3.149},
-    {"id": "07471", "name": "Le Puy-Loudes", "lat": 45.075, "lon": 3.764},
-    {"id": "07481", "name": "Lyon-Saint-Exupéry", "lat": 45.726, "lon": 5.078},
-    {"id": "07510", "name": "Bordeaux-Mérignac", "lat": 44.831, "lon": -0.691},
-    {"id": "07535", "name": "Gourdon", "lat": 44.745, "lon": 1.397},
-    {"id": "07558", "name": "Millau", "lat": 44.118, "lon": 3.020},
-    {"id": "07577", "name": "Montélimar", "lat": 44.581, "lon": 4.733},
-    {"id": "07591", "name": "Embrun", "lat": 44.566, "lon": 6.502},
-    {"id": "07607", "name": "Mont-de-Marsan", "lat": 43.910, "lon": -0.500},
-    {"id": "07621", "name": "Tarbes-Ossun", "lat": 43.188, "lon": 0.000},
-    {"id": "07630", "name": "Toulouse-Blagnac", "lat": 43.621, "lon": 1.379},
-    {"id": "07643", "name": "Montpellier-Fréjorgues", "lat": 43.577, "lon": 3.963},
-    {"id": "07650", "name": "Marseille-Marignane", "lat": 43.438, "lon": 5.216},
-    {"id": "07661", "name": "Cap Cépet", "lat": 43.079, "lon": 5.940},
-    {"id": "07690", "name": "Nice", "lat": 43.649, "lon": 7.209},
-    {"id": "07747", "name": "Perpignan", "lat": 42.737, "lon": 2.873},
-]
+STATIONS: list[dict[str, Any]] = []
+
+
+def _load_stations() -> None:
+    global STATIONS
+    if STATIONS:
+        return
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    geojson_path = os.path.join(base_dir, "stations.geojson")
+
+    if os.path.exists(geojson_path):
+        try:
+            with open(geojson_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                for feature in data.get("features", []):
+                    props = feature.get("properties", {})
+                    geom = feature.get("geometry", {})
+                    coords = geom.get("coordinates", [])
+                    # Only include infoclimat.fr (StatIC) stations since SYNOP are restricted for free keys
+                    if props.get("license", {}).get("source") == "infoclimat.fr" and len(coords) == 2:
+                        STATIONS.append({
+                            "id": props.get("id"),
+                            "name": props.get("name"),
+                            "lat": coords[1],
+                            "lon": coords[0]
+                        })
+        except Exception as e:
+            pass
+
+    if not STATIONS:
+        # Fallback list of known working StatIC stations
+        STATIONS = [
+            {"id": "000B3", "name": "Mulhouse", "lat": 47.746, "lon": 7.343},
+            {"id": "00004", "name": "Nice-Carabacel", "lat": 43.705, "lon": 7.272},
+            {"id": "00002", "name": "Le Vigan", "lat": 43.990, "lon": 3.602},
+        ]
 
 
 @dataclass
@@ -92,6 +90,7 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 def nearest_stations(
     latitude: float, longitude: float, limit: int = 2
 ) -> list[Station]:
+    _load_stations()
     ranked = [
         Station(
             id=s["id"],
@@ -191,8 +190,19 @@ async def fetch_observations(
 
     results: list[dict[str, Any]] = []
     for s in targets:
-        series = data.get(s.id)
+        series = data.get("hourly", {}).get(s.id)
         latest = _latest_observation(series) if isinstance(series, list) else None
+        
+        if latest and "dh_utc" in latest:
+            try:
+                from datetime import datetime
+                from zoneinfo import ZoneInfo
+                dt_utc = datetime.strptime(latest["dh_utc"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=ZoneInfo("UTC"))
+                dt_local = dt_utc.astimezone(ZoneInfo("Europe/Paris"))
+                latest["heure_locale"] = dt_local.strftime("%Y-%m-%d %H:%M (heure locale Paris)")
+            except Exception:
+                pass
+
         station_meta = meta.get(s.id, {})
         results.append(
             {

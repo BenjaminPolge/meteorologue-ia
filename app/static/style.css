@@ -119,3 +119,36 @@ h1 { font-size: 20px; margin: 0; }
   border-color: #7f1d1d;
   color: #fecaca;
 }
+
+/* Styles pour le Chain of Thought (CoT) pliable */
+.bubble details {
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px dashed rgba(56, 189, 248, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.bubble summary {
+  color: var(--accent);
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.bubble details[open] {
+  border-style: solid;
+  border-color: var(--accent-2);
+}
+
+.bubble details[open] summary {
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+  padding-bottom: 4px;
+}
+
+.msg.assistant .bubble {
+  white-space: normal; /* Permet un bon rendu HTML avec des paragraphes issus de marked.parse */
+}

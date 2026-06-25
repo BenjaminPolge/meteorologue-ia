@@ -12,7 +12,13 @@ function addMessage(role, text, opts = {}) {
   const bubble = document.createElement("div");
   bubble.className = "bubble";
   if (opts.typing) bubble.classList.add("typing");
-  bubble.textContent = text;
+  
+  if (role === "assistant" && !opts.typing) {
+    bubble.innerHTML = marked.parse(text);
+  } else {
+    bubble.textContent = text;
+  }
+  
   wrap.appendChild(bubble);
   chat.appendChild(wrap);
   chat.scrollTop = chat.scrollHeight;
