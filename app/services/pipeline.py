@@ -278,7 +278,13 @@ async def run_pipeline(history: list[dict[str, str]]) -> dict[str, Any]:
         }
 
     horizon = int(intent.get("horizon_days") or 2)
-    horizon = max(1, min(horizon, 7))
+    # S'assurer que la prévision couvre bien la date de fin demandée (ex:
+    # "demain matin" nécessite au moins 2 jours).
+    end_dt = _parse_local(intent.get("end_iso"))
+    if end_dt is not None:
+        days_to_end = (end_dt.date() - now.date()).days + 1
+        horizon = max(horizon, days_to_end)
+    horizon = max(2, min(horizon, 7))
 
     async with httpx.AsyncClient(timeout=settings.http_timeout) as client:
         location = await geocode(client, location_name)
@@ -302,7 +308,30 @@ async def run_pipeline(history: list[dict[str, str]]) -> dict[str, Any]:
             token=settings.infoclimat_token,
             station_ids=settings.infoclimat_stations or None,
         )
-        raw_forecast, obs = await asyncio.gather(forecast_task, obs_task)
+        results = await asyncio.gather(forecast_task, obs_task, return_exceptions=True)
+        raw_forecast, obs = results
+
+        if isinstance(raw_forecast, Exception):
+            status = getattr(getattr(raw_forecast, "response", None), "status_code", None)
+            if status == 400:
+                return {
+                    "answer": (
+                        f"« {location.label} » semble se situer hors du domaine couvert "
+                        "par les modèles Météo-France AROME/ARPEGE (France / Europe de "
+                        "l'Ouest). Je ne peux donc pas fournir d'analyse fiable pour ce "
+                        "lieu. Essayez une ville française ou ouest-européenne."
+                    ),
+                    "data_block": {"demande": intent, "instant_present": now_iso,
+                                   "localisation": {"nom": location.label}},
+                    "needs_location": True,
+                }
+            raise raw_forecast
+        if isinstance(obs, Exception):
+            obs = {
+                "available": False,
+                "reason": f"Erreur lors de la récupération Infoclimat : {obs!s}",
+                "stations": [],
+            }
 
     models = openmeteo.split_by_model(raw_forecast)
     data_block = build_data_block(location, intent, models, obs, now_iso)

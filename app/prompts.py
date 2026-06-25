@@ -27,6 +27,13 @@ Règles :
   18:00 ; "matin" = 06:00 à 12:00 ; "soirée" = 18:00 à 23:00.
 - "cette semaine" : horizon_days = 7, start = maintenant, end = +7 jours.
 - Si l'utilisateur ne donne aucune ville, location = null.
+- IMPORTANT : si l'utilisateur désigne une RÉGION, un DÉPARTEMENT ou une zone
+  large plutôt qu'une ville précise, mets dans "location" une ville
+  représentative (préfecture / grande ville) de cette zone, SUIVIE de ", France".
+  Exemples : "Île-de-France" -> "Paris, France" ; "Bretagne" -> "Rennes, France" ;
+  "Sud-Ouest" -> "Toulouse, France" ; "Côte d'Azur" -> "Nice, France" ;
+  "Alsace" -> "Strasbourg, France". Pour une ville française ambiguë, ajoute
+  aussi ", France".
 - Réponds en JSON strict, rien d'autre.
 """
 
