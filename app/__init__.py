@@ -1,0 +1,1 @@
+"""Météorologue IA - application FastAPI."""
