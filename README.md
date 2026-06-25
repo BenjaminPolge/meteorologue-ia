@@ -1,139 +1,124 @@
 # Météorologue IA 🌦️
 
-Chatbot web en français qui répond comme un **prévisionniste professionnel**, et
-non comme un simple bulletin. Pour chaque question, il :
+Chatbot web en français qui répond comme un **prévisionniste professionnel** en croisant des modèles numériques et des observations en temps réel. Pour chaque question météo, il :
 
-- croise **deux modèles numériques** Météo-France (**AROME** haute résolution et
-  **ARPEGE** moyenne échéance) via Open-Meteo ;
-- **chiffre leur accord ou leur divergence** et l'explique ;
-- intègre les **observations temps réel** du réseau de stations **Infoclimat**
-  pour caler le présent (nowcasting) ;
-- explique le **« pourquoi » météo** (flux, front, anticyclone, instabilité/CAPE…) ;
-- rappelle les **limites des modèles** (AROME surtout < 48 h, ARPEGE au-delà,
-  fiabilité décroissante avec l'échéance) ;
-- assortit toujours sa réponse d'un **niveau de confiance** (élevé / modéré / faible) ;
-- **n'invente jamais** une donnée : si une mesure manque, il le dit.
+- Croise **deux modèles numériques** de Météo-France (**AROME** haute résolution et **ARPEGE** moyenne échéance) via Open-Meteo ;
+- **Détaille son raisonnement (Chain of Thought - CoT)** dans un bloc pliable pour les technophiles ;
+- **Chiffre leur accord ou leur divergence** et l'explique ;
+- Intègre les **observations temps réel** du réseau de stations **Infoclimat** pour caler le présent (nowcasting) ;
+- Explique le **« pourquoi » météo** (flux, front, anticyclone, instabilité/CAPE…) ;
+- Rappelle les **limites des modèles** (AROME surtout < 48 h, ARPEGE au-delà) ;
+- Assortit toujours sa réponse d'un **niveau de confiance** (élevé / modéré / faible) ;
+- **N'invente jamais** une donnée : si une mesure manque, il le signale.
 
-## Architecture
+---
+
+## 🚀 Fonctionnalités Améliorées
+
+1. **Raisonnement pliable (Chain of Thought)** : L'analyse intermédiaire du prévisionniste est encapsulée dans un bloc pliable HTML `<details>` afin de ne pas surcharger la lecture pour le grand public, tout en restant accessible d'un simple clic.
+2. **Sélection dynamique des stations (StatIC)** : Charge 1195 stations associatives depuis un fichier GeoJSON local (`app/stations.geojson`). Cela permet de géolocaliser automatiquement la station la plus proche et de supporter les **clés API Infoclimat gratuites** (les clés gratuites n'étant pas autorisées à interroger les stations SYNOP Météo-France).
+3. **Conversion horaire automatique** : Les heures d'observations d'Infoclimat (retournées en UTC) sont automatiquement traduites dans le fuseau `Europe/Paris` (heure locale) par le serveur avant d'être analysées par le LLM pour éliminer toute confusion de fuseau horaire.
+4. **Interface moderne avec rendu Markdown** : L'interface web de discussion intègre la bibliothèque `marked` côté client pour un rendu impeccable des gras, listes et tableaux générés par le prévisionniste.
+
+---
+
+## 🛠️ Architecture
 
 ```
 Question utilisateur
       │
       ▼
-[1] Extraction d'intention (LLM)  ──► localisation, échéance, type de demande
+[1] Extraction d'intention (LLM)  ──► Localisation, échéance, type de demande
       │
       ▼
-[2] Géocodage (Open-Meteo)        ──► latitude / longitude
+[2] Géocodage (Open-Meteo)        ──► Latitude / Longitude
       │
       ▼
 [3] Récupération EN PARALLÈLE :
       • AROME  (arome_france_hd)  ┐
       • ARPEGE (arpege_europe)    ├─ Open-Meteo (endpoint Météo-France)
-      • Observations Infoclimat   ┘
+      • Observations Infoclimat   ┘  (Sélection dynamique de la station StatIC la plus proche)
       │
       ▼
-[4] Bloc de données structuré (JSON) + calcul accord/divergence des modèles
+[4] Bloc de données structuré (JSON) + conversion UTC -> Heure locale Paris
       │
       ▼
-[5] Réponse du prévisionniste (LLM, system prompt « météorologue »)
+[5] Réponse du prévisionniste (LLM, avec CoT pliable + réponse finale)
 ```
 
-- **Backend** : Python + FastAPI (`app/`).
-- **Frontend** : page de chat unique servie statiquement (`app/static/`).
+- **Backend** : Python 3.11+ / FastAPI (`app/`).
+- **Frontend** : Page de chat unique servie statiquement (`app/static/`) avec gestion du Markdown.
 - **LLM** : API OpenAI (clé lue dans l'environnement, modèle configurable).
 
-### Données récupérées par échéance horaire
-Température 2 m, précipitations (+ probabilité quand le modèle l'expose), vent et
-rafales 10 m, couverture nuageuse, pression au niveau mer, humidité relative,
-CAPE. L'app calcule des synthèses par fenêtre et par jour, ainsi qu'un objet
-`accord_modeles` (écarts chiffrés AROME vs ARPEGE).
+---
 
-## Prérequis
+## 📋 Prérequis
 
-- Python 3.11+ (testé en 3.12)
-- Une clé API OpenAI
+- Python 3.11+ (testé en 3.11 et 3.12)
+- Une clé API OpenAI (compte standard ou de service)
 
-## Installation
+---
 
-```bash
-git clone <URL_DU_REPO>
-cd meteorologue-ia
+## ⚙️ Installation
 
-python3 -m venv .venv
-source .venv/bin/activate        # Windows : .venv\Scripts\activate
-pip install -r requirements.txt
-```
+1. **Cloner le projet** :
+   ```bash
+   git clone https://github.com/BenjaminPolge/meteorologue-ia.git
+   cd meteorologue-ia
+   ```
 
-## Configuration (variables d'environnement)
+2. **Créer et activer l'environnement virtuel** :
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate        # Sous Windows : .venv\Scripts\activate
+   ```
 
-Copiez le modèle puis renseignez vos clés :
+3. **Installer les dépendances** :
+   ```bash
+   pip install -r requirements.txt
+   ```
 
+---
+
+## 🔧 Configuration
+
+Copiez le fichier de configuration d'exemple :
 ```bash
 cp .env.example .env
-# éditez .env
 ```
+
+Éditez le fichier `.env` pour y renseigner vos variables :
 
 | Variable | Obligatoire | Description |
 |---|---|---|
-| `OPENAI_API_KEY` | ✅ | Clé API OpenAI (jamais codée en dur). |
-| `OPENAI_MODEL` | ➖ | Modèle à utiliser. Défaut : `gpt-5.5`. Mettez un modèle disponible sur votre compte si besoin (`gpt-4o`, `gpt-4.1`, `gpt-5`, …). |
-| `OPENAI_BASE_URL` | ➖ | Base URL personnalisée (proxy / endpoint compatible OpenAI). |
-| `INFOCLIMAT_TOKEN` | ➖ | Token de l'[API publique Infoclimat](https://www.infoclimat.fr/public-api/). Sans lui, l'app fonctionne mais indique que les observations ne sont pas disponibles. |
-| `INFOCLIMAT_STATIONS` | ➖ | Liste d'IDs de stations à forcer (séparés par des virgules). Par défaut, la station SYNOP la plus proche est choisie automatiquement. |
-| `HTTP_TIMEOUT` | ➖ | Délai d'expiration HTTP en secondes (défaut 20). |
+| `OPENAI_API_KEY` | ✅ | Clé API OpenAI. |
+| `OPENAI_MODEL` | ➖ | Modèle OpenAI à utiliser (ex: `gpt-4o`). Défaut : `gpt-5.5` |
+| `OPENAI_BASE_URL` | ➖ | Base URL optionnelle (pour Azure ou proxy OpenAI). |
+| `INFOCLIMAT_TOKEN` | ➖ | Jeton de l'[API publique Infoclimat](https://www.infoclimat.fr/public-api/). Nécessaire pour inclure les observations réelles. |
+| `INFOCLIMAT_STATIONS` | ➖ | Permet de forcer une liste d'identifiants de stations (ex: `000B3,00004`). Par défaut, la station compatible la plus proche est sélectionnée. |
+| `HTTP_TIMEOUT` | ➖ | Délai d'expiration HTTP en secondes (défaut : 20). |
 
-> **Open-Meteo (AROME/ARPEGE) et le géocodage ne nécessitent aucune clé.**
+---
 
-## Lancement
+## 🎈 Lancement
 
+Pour lancer le serveur de développement :
 ```bash
-source .venv/bin/activate
 uvicorn app.main:app --reload --port 8000
 ```
+Puis ouvrez votre navigateur à l'adresse suivante : **[http://localhost:8000](http://localhost:8000)**.
 
-Puis ouvrez **http://localhost:8000**.
-
-Vérification rapide de la configuration :
-
+### Vérification rapide
+Pour vérifier que la configuration est bien chargée par le serveur :
 ```bash
 curl http://localhost:8000/api/health
 ```
 
-## API
+---
 
-`POST /api/chat`
+## 💬 Exemples de Questions
 
-```json
-{
-  "messages": [{ "role": "user", "content": "Va-t-il pleuvoir demain après-midi à Serris ?" }],
-  "include_data": false
-}
-```
-
-Réponse :
-
-```json
-{ "answer": "…analyse du prévisionniste…", "needs_location": false, "data_block": null }
-```
-
-Passez `"include_data": true` pour recevoir aussi le bloc de données structuré
-utilisé par le LLM (utile pour le débogage).
-
-## Exemples de questions
-
-- « Va-t-il pleuvoir demain après-midi à Serris ? »
-- « Risque d'orage cette semaine sur l'Île-de-France ? »
-- « Quel temps fait-il là maintenant à Lille ? »
-- « AROME et ARPEGE sont-ils d'accord pour Lyon demain ? »
-
-## Limitations connues
-
-- **Probabilité de précipitations** : les modèles Météo-France AROME/ARPEGE
-  n'exposent pas ce champ via Open-Meteo (valeur `null`). L'app le signale au
-  lieu de l'inventer.
-- **Infoclimat & Cloudflare** : le domaine `infoclimat.fr` est protégé par
-  Cloudflare. Depuis certaines IP de datacenter, les requêtes peuvent être
-  bloquées (HTTP 403 / « Just a moment »). Dans ce cas l'app le détecte et
-  l'indique clairement ; l'appel fonctionne normalement depuis une IP non
-  filtrée, avec un token valide.
-```
+- *« Quel temps fait-il là maintenant à Paris ? »*
+- *« Risque d'orage cette après-midi sur Lille ? »*
+- *« AROME et ARPEGE sont-ils d'accord pour Lyon demain ? »*
+- *« Va-t-il pleuvoir demain après-midi à Serris ? »*
