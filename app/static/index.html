@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Météorologue IA</title>
+  <link rel="stylesheet" href="/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="title">
+        <span class="logo">🌦️</span>
+        <div>
+          <h1>Météorologue IA</h1>
+          <p class="subtitle">Prévisionniste virtuel — AROME &amp; ARPEGE (Météo-France) + observations Infoclimat</p>
+        </div>
+      </div>
+    </header>
+
+    <main id="chat" class="chat">
+      <div class="msg assistant">
+        <div class="bubble">
+          Bonjour 👋 Je suis votre prévisionniste IA. Posez-moi une question météo
+          précise, par exemple :
+          <ul>
+            <li>« Va-t-il pleuvoir demain après-midi à Serris ? »</li>
+            <li>« Risque d'orage cette semaine sur l'Île-de-France ? »</li>
+            <li>« Quel temps fait-il là maintenant à Lille ? »</li>
+            <li>« AROME et ARPEGE sont-ils d'accord pour Lyon demain ? »</li>
+          </ul>
+          Je croise les modèles, j'intègre les observations et je vous donne un
+          niveau de confiance.
+        </div>
+      </div>
+    </main>
+
+    <form id="form" class="composer">
+      <input
+        id="input"
+        type="text"
+        autocomplete="off"
+        placeholder="Votre question météo…"
+        required
+      />
+      <button id="send" type="submit">Envoyer</button>
+    </form>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
